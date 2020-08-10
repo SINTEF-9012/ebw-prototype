@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --volumes hostPath
+    kompose.version: 1.21.0 (992df58d8)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: 00-unzip
+  name: 00-unzip
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: 00-unzip
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml --volumes hostPath
+        kompose.version: 1.21.0 (992df58d8)
+      creationTimestamp: null
+      labels:
+        io.kompose.service: 00-unzip
+    spec:
+      containers:
+      - args:
+        - "30"
+        - /sandbox
+        - /code
+        - /in
+        - /work
+        - /out
+        - '-'
+        - MQ1
+        env:
+        - name: KUBEMQ_HOST
+          value: kubemq
+        - name: LOG_JOBS
+          value: "1"
+        - name: STEP_NAME
+          value: 00-unzip
+        image: yareddej/ew-shopp-00-unzip:latest
+        imagePullPolicy: ""
+        name: 00-unzip
+        resources: {}
+        volumeMounts:
+        - mountPath: /in
+          name: 00-unzip-hostpath0
+        - mountPath: /work
+          name: 00-unzip-hostpath1
+        - mountPath: /out
+          name: 00-unzip-hostpath2
+        - mountPath: /sandbox
+          name: 00-unzip-hostpath3
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes:
+      - hostPath:
+          path: /bigdata/yared-experiment/00-unzip/input
+        name: 00-unzip-hostpath0
+      - hostPath:
+          path: /bigdata/yared-experiment/00-unzip/work
+        name: 00-unzip-hostpath1
+      - hostPath:
+          path: /bigdata/yared-experiment/00-unzip/output
+        name: 00-unzip-hostpath2
+      - hostPath:
+          path: /bigdata/yared-experiment/00-unzip/sandbox
+        name: 00-unzip-hostpath3
+status: {}

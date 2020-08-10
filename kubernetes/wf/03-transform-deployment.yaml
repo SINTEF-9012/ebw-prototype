@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --volumes hostPath
+    kompose.version: 1.21.0 (992df58d8)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: 03-transform
+  name: 03-transform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: 03-transform
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml --volumes hostPath
+        kompose.version: 1.21.0 (992df58d8)
+      creationTimestamp: null
+      labels:
+        io.kompose.service: 03-transform
+    spec:
+      containers:
+      - args:
+        - "30"
+        - /sandbox
+        - /code
+        - /in
+        - /work
+        - /out
+        - MQ3
+        - MQ4
+        - /transformation/transformation.jar
+        env:
+        - name: KUBEMQ_HOST
+          value: kubemq
+        - name: LOG_JOBS
+          value: "1"
+        - name: STEP_NAME
+          value: 03-transform
+        image: yareddej/ew-shopp-03-transform:latest
+        imagePullPolicy: ""
+        name: 03-transform
+        resources:
+          requests:
+            memory: 4Gi
+            cpu: 4 # 4 Cores
+          limits:
+            memory: 5Gi
+        volumeMounts:
+        - mountPath: /in
+          name: 03-transform-hostpath0
+        - mountPath: /work
+          name: 03-transform-hostpath1
+        - mountPath: /out
+          name: 03-transform-hostpath2
+        - mountPath: /sandbox
+          name: 03-transform-hostpath3
+        - mountPath: /transformation
+          name: 03-transform-hostpath4
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes:
+      - hostPath:
+          path: /bigdata/yared-experiment/02-split/output
+        name: 03-transform-hostpath0
+      - hostPath:
+          path: /bigdata/yared-experiment/03-transform/work
+        name: 03-transform-hostpath1
+      - hostPath:
+          path: /bigdata/yared-experiment/03-transform/output
+        name: 03-transform-hostpath2
+      - hostPath:
+          path: /bigdata/yared-experiment/03-transform/sandbox
+        name: 03-transform-hostpath3
+      - hostPath:
+          path: /bigdata/yared-experiment/03-transform/transformation
+        name: 03-transform-hostpath4
+status: {}

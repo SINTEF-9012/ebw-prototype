@@ -1,0 +1,140 @@
+version: '2'
+
+services:
+  00-unzip:
+    image: "yareddej/ew-shopp-00-unzip:latest"
+    depends_on:
+      - kubemq
+    environment: 
+      - STEP_NAME=00-unzip
+      - KUBEMQ_HOST=kubemq
+      - LOG_JOBS=1
+    volumes:
+      - /bigdata/yared-experiment/00-unzip/input:/in
+      - /bigdata/yared-experiment/00-unzip/work:/work
+      - /bigdata/yared-experiment/00-unzip/output:/out
+      - /bigdata/yared-experiment/00-unzip/sandbox:/sandbox
+    command: 
+      - '30'
+      - /sandbox
+      - /code
+      - /in
+      - /work
+      - /out
+      - '-'
+      - 'MQ1'
+
+  01-tsv2csv:
+    image: "yareddej/ew-shopp-01-tsv2csv:latest"
+    depends_on:
+      - kubemq
+    environment: 
+      - STEP_NAME=01-tsv2csv
+      - KUBEMQ_HOST=kubemq
+      - LOG_JOBS=1
+    volumes:
+      - /bigdata/yared-experiment/00-unzip/output:/in
+      - /bigdata/yared-experiment/01-tsv2csv/work:/work
+      - /bigdata/yared-experiment/01-tsv2csv/output:/out
+      - /bigdata/yared-experiment/01-tsv2csv/sandbox:/sandbox
+    command: 
+      - '30'
+      - /sandbox
+      - /code
+      - /in
+      - /work
+      - /out
+      - 'MQ1'
+      - 'MQ2'
+  
+  02-split:
+    image: "yareddej/ew-shopp-02-split:latest"
+    depends_on:
+      - kubemq
+    environment: 
+      - STEP_NAME=02-split
+      - KUBEMQ_HOST=kubemq
+      - LOG_JOBS=1
+    volumes:
+      - /bigdata/yared-experiment/01-tsv2csv/output:/in
+      - /bigdata/yared-experiment/02-split/work:/work
+      - /bigdata/yared-experiment/02-split/output:/out
+      - /bigdata/yared-experiment/02-split/sandbox:/sandbox
+    command: 
+      - '30'
+      - /sandbox
+      - /code
+      - /in
+      - /work
+      - /out
+      - 'MQ2'
+      - 'MQ3'
+
+  03-transform:
+    image: "yareddej/ew-shopp-03-transform:latest"
+    mem_limit: 4g   
+    mem_reservation: 5g
+    cpuset: 0-3
+    depends_on:
+      - kubemq
+    environment: 
+      - STEP_NAME=03-transform
+      - KUBEMQ_HOST=kubemq
+      - LOG_JOBS=1
+    volumes:
+      - /bigdata/yared-experiment/02-split/output:/in
+      - /bigdata/yared-experiment/03-transform/work:/work
+      - /bigdata/yared-experiment/03-transform/output:/out
+      - /bigdata/yared-experiment/03-transform/sandbox:/sandbox
+      - /bigdata/yared-experiment/03-transform/transformation:/transformation
+    command: 
+      - '30'
+      - /sandbox
+      - /code
+      - /in
+      - /work
+      - /out
+      - 'MQ3'
+      - 'MQ4'
+      - /transformation/transformation.jar
+
+  04-toarango:
+    image: "yareddej/ew-shopp-04-toarango:latest"
+    depends_on:
+      - kubemq
+    environment: 
+      - STEP_NAME=04-toarango
+      - KUBEMQ_HOST=kubemq
+      - LOG_JOBS=1
+    volumes:
+      - /bigdata/yared-experiment/03-transform/output:/in
+      - /bigdata/yared-experiment/04-toarango/work:/work
+      - /bigdata/yared-experiment/04-toarango/output:/out
+      - /bigdata/yared-experiment/04-toarango/sandbox:/sandbox
+      - /bigdata/yared-experiment/04-toarango/transformation:/transformation
+    command: 
+      - '30'
+      - /sandbox
+      - /code
+      - /in
+      - /work
+      - /out
+      - 'MQ4'
+      - '-'
+      - /transformation/transformation.json
+
+  kubemq:
+    image: kubemq/kubemq:latest
+    container_name: kubemq
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+      - "50000:50000"
+    environment:
+      - KUBEMQ_HOST=kubemq
+      - KUBEMQ_TOKEN="8297ae1b-d2bc-40b4-bf95-39a67162984d"
+    volumes:
+      - kubemq_vol:/store
+
+volumes:
+  kubemq_vol:

@@ -1,0 +1,229 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: ew-shopp-wf-
+spec:
+  entrypoint: ew-shopp-workflow
+  volumes:
+    #Volumes of step 0
+    - name: vol-00-input
+      hostPath:
+        path: /bigdata/yared-experiment/00-unzip/input
+    - name: vol-00-work
+      hostPath:
+        path: /bigdata/yared-experiment/00-unzip/work
+    - name: vol-00-output
+      hostPath:
+        path: /bigdata/yared-experiment/00-unzip/output
+    - name: vol-00-sandbox
+      hostPath:
+        path: /bigdata/yared-experiment/00-unzip/sandbox
+
+    #Volumes of step 1
+    - name: vol-01-input
+      hostPath:
+        path: /bigdata/yared-experiment/00-unzip/output
+    - name: vol-01-work
+      hostPath:
+        path: /bigdata/yared-experiment/01-tsv2csv/work
+    - name: vol-01-output
+      hostPath:
+        path: /bigdata/yared-experiment/01-tsv2csv/output
+    - name: vol-01-sandbox
+      hostPath:
+        path: /bigdata/yared-experiment/01-tsv2csv/sandbox
+
+    #Volumes of step 2
+    - name: vol-02-input
+      hostPath:
+        path: /bigdata/yared-experiment/01-tsv2csv/output
+    - name: vol-02-work
+      hostPath:
+        path: /bigdata/yared-experiment/02-split/work
+    - name: vol-02-output
+      hostPath:
+        path: /bigdata/yared-experiment/02-split/output
+    - name: vol-02-sandbox
+      hostPath:
+        path: /bigdata/yared-experiment/02-split/sandbox
+
+    #Volumes of step 3
+    - name: vol-03-input
+      hostPath:
+        path: /bigdata/yared-experiment/02-split/output
+    - name: vol-03-work
+      hostPath:
+        path: /bigdata/yared-experiment/03-transform/work
+    - name: vol-03-output
+      hostPath:
+        path: /bigdata/yared-experiment/03-transform/output
+    - name: vol-03-sandbox
+      hostPath:
+        path: /bigdata/yared-experiment/03-transform/sandbox
+    - name: vol-03-transformation
+      hostPath:
+        path: /bigdata/yared-experiment/03-transform/transformation
+
+    #Volumes of step 4
+    - name: vol-04-input
+      hostPath:
+        path: /bigdata/yared-experiment/03-transform/output
+    - name: vol-04-work
+      hostPath:
+        path: /bigdata/yared-experiment/04-toarango/work
+    - name: vol-04-output
+      hostPath:
+        path: /bigdata/yared-experiment/04-toarango/output
+    - name: vol-04-sandbox
+      hostPath:
+        path: /bigdata/yared-experiment/04-toarango/sandbox
+    - name: vol-04-transformation
+      hostPath:
+        path: /bigdata/yared-experiment/04-toarango/transformation
+
+  templates:
+    #Step 0
+    - name: 00-unzip
+      container:
+        image: "yareddej/ew-shopp-00-unzip:latest"
+        args: ['0', /sandbox, /code, /in, /work, /out, '-', 'MQ1']
+        env:
+          - name: STEP_NAME
+            value: "00-unzip"
+          - name: KUBEMQ_HOST
+            value: "kubemq"
+          - name: LOG_JOBS
+            value: "1"
+        volumeMounts:
+          - mountPath: /in
+            name: vol-00-input
+          - mountPath: /work
+            name: vol-00-work
+          - mountPath: /out
+            name: vol-00-output
+          - mountPath: /sandbox
+            name: vol-00-sandbox
+      
+    #Step 1
+    - name: 01-tsv2csv
+      container:
+        image: "yareddej/ew-shopp-01-tsv2csv:latest"
+        args: ['0', /sandbox, /code, /in, /work, /out, 'MQ1', 'MQ2']
+        env:
+          - name: STEP_NAME
+            value: "01-tsv2csv"
+          - name: KUBEMQ_HOST
+            value: "kubemq"
+          - name: LOG_JOBS
+            value: "1"
+        volumeMounts:
+          - mountPath: /in
+            name: vol-01-input
+          - mountPath: /work
+            name: vol-01-work
+          - mountPath: /out
+            name: vol-01-output
+          - mountPath: /sandbox
+            name: vol-01-sandbox
+
+    #Step 2
+    - name: 02-split
+      container:
+        image: "yareddej/ew-shopp-02-split:latest"
+        args: ['0', /sandbox, /code, /in, /work, /out, 'MQ2', 'MQ3']
+        env:
+          - name: STEP_NAME
+            value: "02-split"
+          - name: KUBEMQ_HOST
+            value: "kubemq"
+          - name: LOG_JOBS
+            value: "1"
+        volumeMounts:
+          - mountPath: /in
+            name: vol-02-input
+          - mountPath: /work
+            name: vol-02-work
+          - mountPath: /out
+            name: vol-02-output
+          - mountPath: /sandbox
+            name: vol-02-sandbox
+
+    #Step 3
+    - name: 03-transform
+      container:
+        image: "yareddej/ew-shopp-03-transform:latest"
+        args: ['0', /sandbox, /code, /in, /work, /out, 'MQ3', 'MQ4', '/transformation/transformation.jar']
+        env:
+          - name: STEP_NAME
+            value: "03-transform"
+          - name: KUBEMQ_HOST
+            value: "kubemq"
+          - name: LOG_JOBS
+            value: "1"
+        volumeMounts:
+          - mountPath: /in
+            name: vol-03-input
+          - mountPath: /work
+            name: vol-03-work
+          - mountPath: /out
+            name: vol-03-output
+          - mountPath: /sandbox
+            name: vol-03-sandbox
+          - mountPath: transformation
+            name: vol-03-transformation
+        resources:
+          requests:
+            memory: 4Gi
+            cpu: 4 # 4 Cores
+          limits:
+            memory: 5Gi    
+      
+
+    #Step 4
+    - name: 04-toarango
+      container:
+        image: "yareddej/ew-shopp-04-toarango:latest"
+        args: ['0', /sandbox, /code, /in, /work, /out, 'MQ4', '-', '/transformation/transformation.json']
+        env:
+          - name: STEP_NAME
+            value: "04-toarango"
+          - name: KUBEMQ_HOST
+            value: "kubemq"
+          - name: LOG_JOBS
+            value: "1"
+        volumeMounts:
+          - mountPath: /in
+            name: vol-04-input
+          - mountPath: /work
+            name: vol-04-work
+          - mountPath: /out
+            name: vol-04-output
+          - mountPath: /sandbox
+            name: vol-04-sandbox
+          - mountPath: transformation
+            name: vol-04-transformation
+
+
+    # Entrypoint
+    - name: ew-shopp-workflow
+      steps:
+      - - name: unzip
+          template: 00-unzip
+      - - name: tsv2csv-1
+          template: 01-tsv2csv
+        - name: tsv2csv-2
+          template: 01-tsv2csv
+      - - name: split
+          template: 02-split
+      - - name: transform-1
+          template: 03-transform
+        - name: transform-2
+          template: 03-transform
+      - - name: toarango-1
+          template: 04-toarango
+        - name: toarango-2
+          template: 04-toarango
+        - name: toarango-3
+          template: 04-toarango
+        - name: toarango-4
+          template: 04-toarango

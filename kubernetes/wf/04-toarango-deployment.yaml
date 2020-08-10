@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --volumes hostPath
+    kompose.version: 1.21.0 (992df58d8)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: 04-toarango
+  name: 04-toarango
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: 04-toarango
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml --volumes hostPath
+        kompose.version: 1.21.0 (992df58d8)
+      creationTimestamp: null
+      labels:
+        io.kompose.service: 04-toarango
+    spec:
+      containers:
+      - args:
+        - "30"
+        - /sandbox
+        - /code
+        - /in
+        - /work
+        - /out
+        - MQ4
+        - '-'
+        - /transformation/transformation.json
+        env:
+        - name: KUBEMQ_HOST
+          value: kubemq
+        - name: LOG_JOBS
+          value: "1"
+        - name: STEP_NAME
+          value: 04-toarango
+        image: yareddej/ew-shopp-04-toarango:latest
+        imagePullPolicy: ""
+        name: 04-toarango
+        resources: {}
+        volumeMounts:
+        - mountPath: /in
+          name: 04-toarango-hostpath0
+        - mountPath: /work
+          name: 04-toarango-hostpath1
+        - mountPath: /out
+          name: 04-toarango-hostpath2
+        - mountPath: /sandbox
+          name: 04-toarango-hostpath3
+        - mountPath: /transformation
+          name: 04-toarango-hostpath4
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes:
+      - hostPath:
+          path: /bigdata/yared-experiment/03-transform/output
+        name: 04-toarango-hostpath0
+      - hostPath:
+          path: /bigdata/yared-experiment/04-toarango/work
+        name: 04-toarango-hostpath1
+      - hostPath:
+          path: /bigdata/yared-experiment/04-toarango/output
+        name: 04-toarango-hostpath2
+      - hostPath:
+          path: /bigdata/yared-experiment/04-toarango/sandbox
+        name: 04-toarango-hostpath3
+      - hostPath:
+          path: /bigdata/yared-experiment/04-toarango/transformation
+        name: 04-toarango-hostpath4
+status: {}

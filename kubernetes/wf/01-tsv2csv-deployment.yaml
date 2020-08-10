@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --volumes hostPath
+    kompose.version: 1.21.0 (992df58d8)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: 01-tsv2csv
+  name: 01-tsv2csv
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: 01-tsv2csv
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml --volumes hostPath
+        kompose.version: 1.21.0 (992df58d8)
+      creationTimestamp: null
+      labels:
+        io.kompose.service: 01-tsv2csv
+    spec:
+      containers:
+      - args:
+        - "30"
+        - /sandbox
+        - /code
+        - /in
+        - /work
+        - /out
+        - MQ1
+        - MQ2
+        env:
+        - name: KUBEMQ_HOST
+          value: kubemq
+        - name: LOG_JOBS
+          value: "1"
+        - name: STEP_NAME
+          value: 01-tsv2csv
+        image: yareddej/ew-shopp-01-tsv2csv:latest
+        imagePullPolicy: ""
+        name: 01-tsv2csv
+        resources: {}
+        volumeMounts:
+        - mountPath: /in
+          name: 01-tsv2csv-hostpath0
+        - mountPath: /work
+          name: 01-tsv2csv-hostpath1
+        - mountPath: /out
+          name: 01-tsv2csv-hostpath2
+        - mountPath: /sandbox
+          name: 01-tsv2csv-hostpath3
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes:
+      - hostPath:
+          path: /bigdata/yared-experiment/00-unzip/output
+        name: 01-tsv2csv-hostpath0
+      - hostPath:
+          path: /bigdata/yared-experiment/01-tsv2csv/work
+        name: 01-tsv2csv-hostpath1
+      - hostPath:
+          path: /bigdata/yared-experiment/01-tsv2csv/output
+        name: 01-tsv2csv-hostpath2
+      - hostPath:
+          path: /bigdata/yared-experiment/01-tsv2csv/sandbox
+        name: 01-tsv2csv-hostpath3
+status: {}

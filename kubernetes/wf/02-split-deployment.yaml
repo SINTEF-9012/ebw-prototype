@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml --volumes hostPath
+    kompose.version: 1.21.0 (992df58d8)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: 02-split
+  name: 02-split
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: 02-split
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml --volumes hostPath
+        kompose.version: 1.21.0 (992df58d8)
+      creationTimestamp: null
+      labels:
+        io.kompose.service: 02-split
+    spec:
+      containers:
+      - args:
+        - "30"
+        - /sandbox
+        - /code
+        - /in
+        - /work
+        - /out
+        - MQ2
+        - MQ3
+        env:
+        - name: KUBEMQ_HOST
+          value: kubemq
+        - name: LOG_JOBS
+          value: "1"
+        - name: STEP_NAME
+          value: 02-split
+        image: yareddej/ew-shopp-02-split:latest
+        imagePullPolicy: ""
+        name: 02-split
+        resources: {}
+        volumeMounts:
+        - mountPath: /in
+          name: 02-split-hostpath0
+        - mountPath: /work
+          name: 02-split-hostpath1
+        - mountPath: /out
+          name: 02-split-hostpath2
+        - mountPath: /sandbox
+          name: 02-split-hostpath3
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes:
+      - hostPath:
+          path: /bigdata/yared-experiment/01-tsv2csv/output
+        name: 02-split-hostpath0
+      - hostPath:
+          path: /bigdata/yared-experiment/02-split/work
+        name: 02-split-hostpath1
+      - hostPath:
+          path: /bigdata/yared-experiment/02-split/output
+        name: 02-split-hostpath2
+      - hostPath:
+          path: /bigdata/yared-experiment/02-split/sandbox
+        name: 02-split-hostpath3
+status: {}

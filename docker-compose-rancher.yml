@@ -1,0 +1,172 @@
+version: '2'
+
+services:
+  00-unzip:
+    image: "yareddej/ew-shopp-00-unzip:latest"
+    depends_on:
+      - kubemq
+    stdin_open: true
+    environment: 
+      - STEP_NAME=00-unzip
+      - KUBEMQ_HOST=kubemq
+      - LOG_JOBS=1
+    volumes:
+      - /bigdata/yared-experiment/00-unzip/input:/in
+      - /bigdata/yared-experiment/00-unzip/work:/work
+      - /bigdata/yared-experiment/00-unzip/output:/out
+      - /bigdata/yared-experiment/00-unzip/sandbox:/sandbox
+    command: 
+      - '10'
+      - /sandbox
+      - /code
+      - /in
+      - /work
+      - /out
+      - '-'
+      - 'MQ1'
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+
+  01-tsv2csv:
+    image: "yareddej/ew-shopp-01-tsv2csv:latest"
+    depends_on:
+      - kubemq
+    stdin_open: true
+    environment: 
+      - STEP_NAME=01-tsv2csv
+      - KUBEMQ_HOST=kubemq
+      - LOG_JOBS=1
+    volumes:
+      - /bigdata/yared-experiment/00-unzip/output:/in
+      - /bigdata/yared-experiment/01-tsv2csv/work:/work
+      - /bigdata/yared-experiment/01-tsv2csv/output:/out
+      - /bigdata/yared-experiment/01-tsv2csv/sandbox:/sandbox
+    command: 
+      - '10'
+      - /sandbox
+      - /code
+      - /in
+      - /work
+      - /out
+      - 'MQ1'
+      - 'MQ2'
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+  
+  02-split:
+    image: "yareddej/ew-shopp-02-split:latest"
+    depends_on:
+      - kubemq
+    stdin_open: true
+    environment: 
+      - STEP_NAME=02-split
+      - KUBEMQ_HOST=kubemq
+      - LOG_JOBS=1
+    volumes:
+      - /bigdata/yared-experiment/01-tsv2csv/output:/in
+      - /bigdata/yared-experiment/02-split/work:/work
+      - /bigdata/yared-experiment/02-split/output:/out
+      - /bigdata/yared-experiment/02-split/sandbox:/sandbox
+    command: 
+      - '10'
+      - /sandbox
+      - /code
+      - /in
+      - /work
+      - /out
+      - 'MQ2'
+      - 'MQ3'
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+
+  03-transform:
+    image: "yareddej/ew-shopp-03-transform:latest"
+    depends_on:
+      - kubemq
+    stdin_open: true
+    tty: true
+    mem_limit: 5g     
+    mem_reservation: 4g
+    cpuset: 0-3
+    environment: 
+      - STEP_NAME=03-transform
+      - KUBEMQ_HOST=kubemq
+      - LOG_JOBS=1
+    volumes:
+      - /bigdata/yared-experiment/02-split/output:/in
+      - /bigdata/yared-experiment/03-transform/work:/work
+      - /bigdata/yared-experiment/03-transform/output:/out
+      - /bigdata/yared-experiment/03-transform/sandbox:/sandbox
+      - /bigdata/yared-experiment/03-transform/transformation:/transformation
+    command: 
+      - '10'
+      - /sandbox
+      - /code
+      - /in
+      - /work
+      - /out
+      - 'MQ3'
+      - 'MQ4'
+      - /transformation/transformation.jar
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+
+  04-toarango:
+    image: "yareddej/ew-shopp-04-toarango:latest"
+    depends_on:
+      - kubemq
+    stdin_open: true
+    tty: true
+    cpuset: '1'
+    environment: 
+      - STEP_NAME=04-toarango
+      - KUBEMQ_HOST=kubemq
+      - LOG_JOBS=1
+    volumes:
+      - /bigdata/yared-experiment/03-transform/output:/in
+      - /bigdata/yared-experiment/04-toarango/work:/work
+      - /bigdata/yared-experiment/04-toarango/output:/out
+      - /bigdata/yared-experiment/04-toarango/sandbox:/sandbox
+      - /bigdata/yared-experiment/04-toarango/transformation:/transformation
+    command: 
+      - '10'
+      - /sandbox
+      - /code
+      - /in
+      - /work
+      - /out
+      - 'MQ4'
+      - '-'
+      - /transformation/transformation.json
+    labels:
+      io.rancher.container.start_once: 'true'
+      io.rancher.container.hostname_override: container_name
+      io.rancher.container.pull_image: always
+
+  kubemq:
+    image: kubemq/kubemq:latest
+    container_name: kubemq
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+      - "50000:50000"
+    environment:
+      - KUBEMQ_HOST=kubemq
+      - KUBEMQ_TOKEN="8297ae1b-d2bc-40b4-bf95-39a67162984d"
+    volumes:
+      - kubemq_vol:/store
+    stdin_open: true
+    tty: true
+    labels:
+      io.rancher.container.pull_image: always
+
+volumes:
+  kubemq_vol:
